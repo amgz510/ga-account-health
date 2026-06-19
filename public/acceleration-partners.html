@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceleration Partners — Account Health Deep Dive · Jun 2026</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d26;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #4f6ef7;
+    --green: #2ecc71;
+    --yellow: #f39c12;
+    --red: #e74c3c;
+    --gray: #636e8f;
+    --text: #e8eaf0;
+    --muted: #7a849e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+  .header { margin-bottom: 28px; }
+  .header h1 { font-size: 26px; font-weight: 700; color: #fff; }
+  .header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* Alerts */
+  .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+  .alert { border-radius: 8px; padding: 11px 15px; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; }
+  .alert-red   { background: rgba(231,76,60,0.10); border: 1px solid rgba(231,76,60,0.3); color: #ff7675; }
+  .alert-yellow{ background: rgba(243,156,18,0.10); border: 1px solid rgba(243,156,18,0.3); color: #fdcb6e; }
+  .alert-blue  { background: rgba(79,110,247,0.10); border: 1px solid rgba(79,110,247,0.3); color: #74b9ff; }
+  .alert-icon  { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+
+  /* Scorecard */
+  .scorecard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .sc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .sc .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 4px; }
+  .sc .val { font-size: 24px; font-weight: 700; line-height: 1; }
+  .sc .note { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .c-red    { color: var(--red); }
+  .c-green  { color: var(--green); }
+  .c-yellow { color: var(--yellow); }
+  .c-blue   { color: #74b9ff; }
+
+  h2 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .section { margin-bottom: 32px; }
+
+  /* GA Trend — pure CSS bars */
+  .trend-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .trend-caption { font-size: 11px; color: var(--muted); text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .bar-grid {
+    display: grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap: 4px;
+    align-items: end;
+    height: 130px;
+  }
+  .bc { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+  .bv { font-size: 9px; font-weight: 700; color: var(--text); line-height: 1; }
+  .bb { width: 100%; border-radius: 3px 3px 0 0; flex-shrink: 0; }
+  .bl { font-size: 8px; color: var(--muted); text-align: center; white-space: nowrap; margin-top: 3px; overflow: hidden; }
+  /* Peak bar gets purple, 2026 bars get red, 2025 bars get blue */
+  .b-blue   { background: #4f6ef7; }
+  .b-peak   { background: #6c5ce7; }
+  .b-red    { background: #e74c3c; }
+
+  /* Timeline */
+  .tl-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .tl { position: relative; padding-left: 18px; }
+  .tl::before { content:''; position:absolute; left:3px; top:6px; bottom:6px; width:2px; background:var(--border); }
+  .tl-item { position:relative; padding: 0 0 16px 14px; }
+  .tl-item::before { content:''; position:absolute; left:-8px; top:5px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl-item.danger::before { background: var(--red); }
+  .tl-item.caution::before { background: var(--yellow); }
+  .tl-item.now::before { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .tl-date { font-size: 11px; color: var(--muted); }
+  .tl-text { font-size: 13px; font-weight: 600; color: var(--text); }
+  .tl-sub  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--surface2); padding: 9px 13px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); white-space: nowrap; }
+  td { padding: 9px 13px; border-top: 1px solid var(--border); font-size: 13px; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; white-space:nowrap; }
+  .badge-red    { background:rgba(231,76,60,0.18); color:#ff7675; }
+  .badge-yellow { background:rgba(243,156,18,0.18); color:#fdcb6e; }
+  .badge-blue   { background:rgba(79,110,247,0.18); color:#74b9ff; }
+  .badge-gray   { background:rgba(99,110,143,0.18); color:#a0aec0; }
+
+  /* Root cause box */
+  .rc-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 12px; }
+  .rc-box h3 { font-size: 13px; font-weight: 700; color: var(--yellow); margin-bottom: 10px; }
+  .rc-list { list-style:none; }
+  .rc-list li { display:flex; gap:10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size:12px; color:var(--muted); }
+  .rc-list li:last-child { border-bottom:none; padding-bottom:0; }
+  .rc-list li .ico { flex-shrink:0; font-size:14px; }
+  .rc-list li strong { color: var(--text); }
+
+  /* Org Chart */
+  .org-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; overflow-x: auto; }
+
+  /* Status legend — single clear meaning per color */
+  .org-legend { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--border); font-size:12px; align-items:center; }
+  .leg-item { display:flex; align-items:center; gap:6px; }
+  .leg-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+  .src-legend { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; font-size:11px; align-items:center; color:var(--muted); }
+  .src { display:inline-block; padding:1px 5px; border-radius:3px; font-size:10px; font-weight:700; }
+  .src-hs  { background:rgba(0,145,174,0.2); color:#00cfe3; }
+  .src-ff  { background:rgba(232,85,62,0.18); color:#ff7675; }
+  .src-ext { background:rgba(108,92,231,0.2); color:#a29bfe; }
+
+  .org-tier { margin-bottom:18px; }
+  .tier-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:8px; font-weight:600; }
+  .org-row { display:flex; flex-wrap:wrap; gap:8px; }
+
+  .pcard {
+    display:flex; flex-direction:column;
+    border: 1.5px solid var(--border);
+    border-radius:8px;
+    padding:10px 13px;
+    min-width:190px; max-width:250px;
+    flex:1;
+    background: var(--surface2);
+    transition: border-color 0.15s;
+  }
+  .pcard:hover { border-color: #4f6ef7; }
+  /* Status color on left border only — unambiguous */
+  .pcard.s-active  { border-left: 3px solid var(--green); }
+  .pcard.s-lapsed  { border-left: 3px solid var(--yellow); }
+  .pcard.s-target  { border-left: 3px solid var(--accent); }
+  .pcard.s-ghost   { border-left: 3px solid var(--gray); }
+  .pcard.s-risk    { border-left: 3px solid var(--red); }
+
+  .pcard-name { font-weight:600; font-size:13px; color:var(--text); }
+  .pcard-name a { color:var(--text); }
+  .pcard-name a:hover { color:var(--accent); }
+  .pcard-title { font-size:11px; color:var(--muted); margin-top:2px; line-height:1.3; }
+  .pcard-meta  { display:flex; flex-wrap:wrap; gap:3px; margin-top:6px; align-items:center; }
+  .pm-tag { font-size:10px; padding:1px 5px; border-radius:3px; }
+  .pm-active { background:rgba(46,204,113,0.12); color:#55efc4; }
+  .pm-lapsed { background:rgba(243,156,18,0.12); color:#fdcb6e; }
+  .pm-target { background:rgba(79,110,247,0.12); color:#74b9ff; }
+  .pm-risk   { background:rgba(231,76,60,0.12); color:#ff7675; }
+  .pm-ghost  { background:rgba(99,110,143,0.12); color:#a0aec0; }
+  .pm-li { font-size:10px; color:var(--accent); }
+  /* LinkedIn link icon shown on every card */
+  .li-link { display:inline-flex; align-items:center; gap:3px; font-size:10px; color:var(--accent); margin-left:auto; text-decoration:none; white-space:nowrap; }
+  .li-link:hover { color:#a0c4ff; }
+  .li-link svg { flex-shrink:0; }
+  .li-none { display:inline-flex; align-items:center; gap:3px; font-size:10px; color:var(--muted); margin-left:auto; white-space:nowrap; opacity:0.5; }
+  .li-none svg { flex-shrink:0; }
+
+  /* GA Distribution section */
+  .ga-dist-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .ga-dist-note { font-size:12px; color:var(--muted); margin-bottom:16px; line-height:1.5; }
+  .ga-dept-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .ga-dept-name { width:200px; flex-shrink:0; font-size:12px; color:var(--text); }
+  .ga-bar-bg { flex:1; background:var(--surface2); border-radius:4px; height:18px; overflow:hidden; position:relative; }
+  .ga-bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:6px; }
+  .ga-bar-text { font-size:10px; font-weight:700; color:rgba(255,255,255,0.9); }
+  .ga-count { font-size:12px; font-weight:700; width:36px; text-align:right; flex-shrink:0; }
+  .ga-insight { margin-top:4px; font-size:11px; color:var(--muted); padding-left:210px; }
+  .ga-summary { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); line-height:1.6; }
+
+  /* Expansion */
+  .exp-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px,1fr)); gap:12px; }
+  .exp-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .exp-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+  .exp-card h3 { font-size:13px; font-weight:700; color:#fff; flex:1; margin-right:8px; line-height:1.3; }
+  .pri { font-size:10px; padding:2px 7px; border-radius:4px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+  .pri-urgent { background:rgba(231,76,60,0.2); color:#ff7675; }
+  .pri-high   { background:rgba(243,156,18,0.2); color:#fdcb6e; }
+  .pri-med    { background:rgba(79,110,247,0.2); color:#74b9ff; }
+  .exp-desc   { font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.5; }
+  .exp-who    { font-size:11px; color:var(--muted); }
+  .exp-who strong { color:var(--text); }
+
+  /* Actions */
+  .act-list { display:flex; flex-direction:column; gap:8px; }
+  .act-item { display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+  .act-num { width:22px; height:22px; border-radius:50%; background:var(--surface2); color:var(--muted); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .act-num.n-urgent { background:rgba(231,76,60,0.2); color:#ff7675; }
+  .act-num.n-high   { background:rgba(243,156,18,0.2); color:#fdcb6e; }
+  .act-title  { font-size:13px; font-weight:600; color:var(--text); }
+  .act-detail { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.5; }
+
+  .footer { border-top:1px solid var(--border); padding-top:16px; margin-top:16px; text-align:center; font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Acceleration Partners — Account Health Deep Dive</h1>
+    <div class="sub">Jun 19, 2026 &nbsp;·&nbsp; Sources: HubSpot CRM, Fireflies AI, LinkedIn/External Research &nbsp;·&nbsp; Internal — Ash Garber</div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="alerts">
+    <div class="alert alert-red">
+      <span class="alert-icon">🔴</span>
+      <div><strong>Billing Amendment Overdue:</strong> Tyla requested a written amendment formalizing $107K/month fixed billing (12.5% volume discount for 40 GAs) at the Jun 9 sync. Stephen committed to send it. Still not sent as of Jun 19 — 10 days overdue.</div>
+    </div>
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>Therese Libo — Last Day Jun 30:</strong> Confirmed budget cut at Jun 16 bi-weekly. GA count drops 39 → 38 on Jul 1. Transition plan confirmed during Jul 1–3 wellness break.</div>
+    </div>
+    <div class="alert alert-yellow">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>Stephanie Swan — Possible Departure:</strong> LinkedIn data suggests she may have left AP for DisteCable S.L. Last logged contact Jun 9, 2026. Verify before next outreach — she is a key operational contact alongside Tyla.</div>
+    </div>
+    <div class="alert alert-blue">
+      <span class="alert-icon">🔵</span>
+      <div><strong>Incoming Influencer VP:</strong> Sarah disclosed a new VP is onboarding imminently to run the influencer org (Mar 25 meeting). Fresh buyer, fresh budget, fresh mandate — not yet in HubSpot. Primary near-term expansion entry point.</div>
+    </div>
+  </div>
+
+  <!-- SCORECARD -->
+  <div class="section">
+    <div class="scorecard">
+      <div class="sc"><div class="lbl">Active GAs</div><div class="val c-yellow">39</div><div class="note">Peak was 51 (Sept '25)</div></div>
+      <div class="sc"><div class="lbl">Contraction</div><div class="val c-red">↓24%</div><div class="note">51 → 39 in ~9 months</div></div>
+      <div class="sc"><div class="lbl">In Booked/Placement</div><div class="val c-red">0</div><div class="note">No new GAs in pipeline</div></div>
+      <div class="sc"><div class="lbl">Monthly Billing</div><div class="val c-blue">$107K</div><div class="note">Fixed · 12.5% vol. discount</div></div>
+      <div class="sc"><div class="lbl">Client Since</div><div class="val c-green">Jul '21</div><div class="note">5 yrs · #2 by GA count</div></div>
+      <div class="sc"><div class="lbl">Cancellations YTD</div><div class="val c-red">12+</div><div class="note">Jan–Jun 2026</div></div>
+      <div class="sc"><div class="lbl">GA Resignations</div><div class="val c-yellow">4+</div><div class="note">Mid-placement, 6 months</div></div>
+      <div class="sc"><div class="lbl">HubSpot Contacts</div><div class="val c-blue">154</div><div class="note">Many likely stale/departed</div></div>
+    </div>
+  </div>
+
+  <!-- KEY EVENTS TIMELINE — moved up for context -->
+  <div class="section">
+    <h2>Key Account Events — Last 18 Months</h2>
+    <div class="tl-box">
+      <div class="tl">
+        <div class="tl-item">
+          <div class="tl-date">Sept 2025</div>
+          <div class="tl-text">Peak deployment — 51 active GAs</div>
+          <div class="tl-sub">Account at all-time high; AP aggressively deploying GAs across affiliate and influencer ops</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">Nov 2025</div>
+          <div class="tl-text">Sarah Johnson Dayes takes direct oversight of influencer org</div>
+          <div class="tl-sub">New Influencer VP search underway — first signal of structural influencer org change</div>
+        </div>
+        <div class="tl-item danger">
+          <div class="tl-date">Feb 12, 2026</div>
+          <div class="tl-text">GAX Client Intervention — Enterprise pod instability</div>
+          <div class="tl-sub">Multiple GA resignations (Ivan, Sarah, Lovely) destabilize delivery; billing credits issued; escalation meeting held</div>
+        </div>
+        <div class="tl-item danger">
+          <div class="tl-date">Mar 2026</div>
+          <div class="tl-text">Mass cancellations begin — Crystal, Shienna, John Paolo</div>
+          <div class="tl-sub">"Reduced headcount" cited; PE-driven cost discipline accelerating</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">Mar 25, 2026</div>
+          <div class="tl-text">Strategic meeting with Sarah Johnson Dayes (COO)</div>
+          <div class="tl-sub">AP commits to AI-native by 2027; new Influencer VP onboarding soon; Tyla taking over from Stephanie; senior oversight GA role approved</div>
+        </div>
+        <div class="tl-item danger">
+          <div class="tl-date">Apr–May 2026</div>
+          <div class="tl-text">5 more cancellations: John Joshua, Jannah, Nikolai, Aileen + others</div>
+          <div class="tl-sub">"No work to delegate" becomes primary cancellation reason; automation displacement confirmed by Tyla on May 26</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">Apr 28, 2026</div>
+          <div class="tl-text">Stephen pitches AI Ops / Automation GA roles to Tyla</div>
+          <div class="tl-sub">Tyla asks to review — thread still open, no follow-up logged (7 weeks ago)</div>
+        </div>
+        <div class="tl-item caution">
+          <div class="tl-date">Jun 9, 2026</div>
+          <div class="tl-text">$107K billing structure conversation with Tyla</div>
+          <div class="tl-sub">Tyla requests written billing amendment; Stephen commits to send — still not sent as of Jun 19</div>
+        </div>
+        <div class="tl-item danger">
+          <div class="tl-date">Jun 16, 2026</div>
+          <div class="tl-text">Therese Libo offboarding confirmed — Jun 30 last day</div>
+          <div class="tl-sub">Budget cut; GA count drops to 38 on Jul 1</div>
+        </div>
+        <div class="tl-item now">
+          <div class="tl-date">Today — Jun 19, 2026</div>
+          <div class="tl-text">39 active GAs, zero in pipeline, billing amendment pending</div>
+          <div class="tl-sub">Without action, continued attrition is the default path</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GA DEPLOYMENT TREND — pure CSS, no JS -->
+  <div class="section">
+    <h2>GA Deployment Trend — Last 18 Months</h2>
+    <div class="trend-box">
+      <!--
+        Bar heights: max value = 51, chart height = 110px
+        Height = (value / 51) * 110  (rounded to nearest px)
+        Color: blue = 2025 growth phase, purple = peak (51), red = 2026 contraction
+      -->
+      <div class="bar-grid">
+        <!-- Jan 25 = 38 → 82px -->
+        <div class="bc"><div class="bv">38</div><div class="bb b-blue" style="height:82px"></div><div class="bl">Jan<br>'25</div></div>
+        <!-- Feb = 40 → 86px -->
+        <div class="bc"><div class="bv">40</div><div class="bb b-blue" style="height:86px"></div><div class="bl">Feb</div></div>
+        <!-- Mar = 42 → 91px -->
+        <div class="bc"><div class="bv">42</div><div class="bb b-blue" style="height:91px"></div><div class="bl">Mar</div></div>
+        <!-- Apr = 44 → 95px -->
+        <div class="bc"><div class="bv">44</div><div class="bb b-blue" style="height:95px"></div><div class="bl">Apr</div></div>
+        <!-- May = 46 → 99px -->
+        <div class="bc"><div class="bv">46</div><div class="bb b-blue" style="height:99px"></div><div class="bl">May</div></div>
+        <!-- Jun = 48 → 104px -->
+        <div class="bc"><div class="bv">48</div><div class="bb b-blue" style="height:104px"></div><div class="bl">Jun</div></div>
+        <!-- Jul = 49 → 106px -->
+        <div class="bc"><div class="bv">49</div><div class="bb b-blue" style="height:106px"></div><div class="bl">Jul</div></div>
+        <!-- Aug = 50 → 108px -->
+        <div class="bc"><div class="bv">50</div><div class="bb b-blue" style="height:108px"></div><div class="bl">Aug</div></div>
+        <!-- Sept = 51 → 110px PEAK -->
+        <div class="bc"><div class="bv" style="color:#a29bfe">51 ▲</div><div class="bb b-peak" style="height:110px"></div><div class="bl" style="color:#a29bfe">Sep<br>peak</div></div>
+        <!-- Oct = 50 → 108px -->
+        <div class="bc"><div class="bv">50</div><div class="bb b-blue" style="height:108px"></div><div class="bl">Oct</div></div>
+        <!-- Nov = 49 → 106px -->
+        <div class="bc"><div class="bv">49</div><div class="bb b-blue" style="height:106px"></div><div class="bl">Nov</div></div>
+        <!-- Dec = 48 → 104px -->
+        <div class="bc"><div class="bv">48</div><div class="bb b-blue" style="height:104px"></div><div class="bl">Dec</div></div>
+        <!-- Jan 26 = 46 → 99px -->
+        <div class="bc"><div class="bv">46</div><div class="bb b-red" style="height:99px"></div><div class="bl">Jan<br>'26</div></div>
+        <!-- Feb = 44 → 95px -->
+        <div class="bc"><div class="bv">44</div><div class="bb b-red" style="height:95px"></div><div class="bl">Feb</div></div>
+        <!-- Mar = 43 → 93px -->
+        <div class="bc"><div class="bv">43</div><div class="bb b-red" style="height:93px"></div><div class="bl">Mar</div></div>
+        <!-- Apr = 41 → 88px -->
+        <div class="bc"><div class="bv">41</div><div class="bb b-red" style="height:88px"></div><div class="bl">Apr</div></div>
+        <!-- May = 40 → 86px -->
+        <div class="bc"><div class="bv">40</div><div class="bb b-red" style="height:86px"></div><div class="bl">May</div></div>
+        <!-- Jun = 39 → 84px -->
+        <div class="bc"><div class="bv" style="color:#ff7675">39 ▼</div><div class="bb b-red" style="height:84px"></div><div class="bl" style="color:#ff7675">Jun<br>now</div></div>
+      </div>
+      <div class="trend-caption">
+        Blue = 2025 growth phase &nbsp;·&nbsp; <span style="color:#a29bfe">Purple = Sept 2025 peak (51 GAs)</span> &nbsp;·&nbsp; <span style="color:#e74c3c">Red = 2026 contraction phase</span> &nbsp;·&nbsp; Values are active GA headcount
+      </div>
+    </div>
+  </div>
+
+  <!-- CANCELLATION ANALYSIS -->
+  <div class="section">
+    <h2>Cancellation Analysis — Jan–Jun 2026</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>GA Name</th>
+            <th>Role</th>
+            <th>Cancel Date</th>
+            <th>Reason</th>
+            <th>AP Team / Contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Therese Libo</td><td>Affiliate Coordinator</td><td>Jun 30, 2026</td><td><span class="badge badge-yellow">Headcount Reduction</span></td><td>Jillian Menkes' team</td></tr>
+          <tr><td>John Joshua Moreno</td><td>Affiliate Lead</td><td>May 1, 2026</td><td><span class="badge badge-red">No Work to Delegate</span></td><td>Unspecified</td></tr>
+          <tr><td>Jannah Uson</td><td>Influencer Associate</td><td>May 1, 2026</td><td><span class="badge badge-red">No Work to Delegate</span></td><td>Influencer team</td></tr>
+          <tr><td>Nikolai Catajan</td><td>Influencer Assistant</td><td>Apr 15, 2026</td><td><span class="badge badge-gray">Pending Call</span></td><td>Influencer team</td></tr>
+          <tr><td>Aileen Mae Mendoza</td><td>Affiliate Coordinator</td><td>Apr 10, 2026</td><td><span class="badge badge-gray">Resourcing Only</span></td><td>Unspecified</td></tr>
+          <tr><td>Crystal Coran</td><td>Monday.com / Ops Admin</td><td>Mar 2026</td><td><span class="badge badge-yellow">Headcount Reduction</span></td><td>Nicole Ekblad (was Veronica Swinson)</td></tr>
+          <tr><td>Shienna Rose Esquivel</td><td>Affiliate Role</td><td>Mar 2026</td><td><span class="badge badge-yellow">Headcount Reduction</span></td><td>Unspecified</td></tr>
+          <tr><td>John Paolo Wong</td><td>Affiliate Role</td><td>Mar 2026</td><td><span class="badge badge-yellow">Headcount Reduction</span></td><td>Unspecified</td></tr>
+          <tr><td>Ivan Marquez</td><td>Affiliate / Ops</td><td>Feb 2026</td><td><span class="badge badge-blue">GA Resigned</span></td><td>Enterprise pod (Heather's team)</td></tr>
+          <tr><td>Sarah Balaba</td><td>GA Role</td><td>Feb 2026</td><td><span class="badge badge-blue">GA Resigned</span></td><td>Enterprise pod</td></tr>
+          <tr><td>Lovely Osma</td><td>GA Role</td><td>Feb/Mar 2026</td><td><span class="badge badge-blue">GA Resigned</span></td><td>Enterprise pod</td></tr>
+          <tr><td>Sophia Hanga-an</td><td>GA Role</td><td>Mar/Apr 2026</td><td><span class="badge badge-blue">GA Resigned</span></td><td>Unspecified</td></tr>
+          <tr><td>PT Trial — Affiliate Asst #1</td><td>Part-time Trial</td><td>Jan–Feb 2026</td><td><span class="badge badge-gray">Trial Not Converted</span></td><td>Risk-free trial, never converted</td></tr>
+          <tr><td>PT Trial — Affiliate Asst #2</td><td>Part-time Trial</td><td>Jan–Feb 2026</td><td><span class="badge badge-gray">Trial Not Converted</span></td><td>Risk-free trial, never converted</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rc-box">
+      <h3>Root Cause Analysis — Three Failure Modes</h3>
+      <ul class="rc-list">
+        <li><span class="ico">🤖</span><div><strong>Automation Displacement (structural):</strong> Tyla explicitly stated on May 26 that reductions are driven by automation reducing workload volume — not GA performance. AP is going AI-native by 2027. Junior affiliate coordinator/assistant roles are the exact jobs being automated away. This is not fixable by better onboarding.</div></li>
+        <li><span class="ico">⚙️</span><div><strong>No Delegation Framework:</strong> AP account managers are client-facing and stretched. Junior execution roles require active task delegation — when managers don't have time or a defined task backlog, the GA sits idle. Tyla flagged at Apr 28 that managers were "doing GA tasks themselves." Role scoping at kickoff was insufficient.</div></li>
+        <li><span class="ico">🔄</span><div><strong>GA Resignation Churn:</strong> 4+ mid-placement resignations in 6 months (Enterprise pod: Ivan, Sarah, Lovely, Sophia). Each triggers credit, replacement search, and client friction. Feb 12 "GAX Client Intervention" was a direct escalation tied to this cohort instability.</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ORG CHART -->
+  <div class="section">
+    <h2>Stakeholder Org Chart — Contact Status by Department</h2>
+    <div class="org-wrap">
+
+      <div class="org-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div><span>Active — current GA relationship or recent comms</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div><span>Lapsed — in HubSpot, no recent engagement</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div><span>Untapped — we want a relationship, don't have one</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--gray)"></div><span>Not in HubSpot — external research / needs to be added</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div><span>Risk — may have departed AP</span></div>
+        <div class="src-legend">
+          Sources: <span class="src src-hs">HS</span> HubSpot &nbsp;<span class="src src-ff">FF</span> Fireflies &nbsp;<span class="src src-ext">EXT</span> External
+        </div>
+      </div>
+
+      <!-- LinkedIn icon SVG used inline on every card -->
+      <!-- li-icon-yes = blue clickable, li-icon-no = muted non-link -->
+
+      <!-- C-Suite -->
+      <div class="org-tier">
+        <div class="tier-lbl">C-Suite / Board</div>
+        <div class="org-row">
+          <div class="pcard s-ghost">
+            <div class="pcard-name">Robert Glazer</div>
+            <div class="pcard-title">Founder & Chairman</div>
+            <div class="pcard-meta"><span class="src src-ext">EXT</span><span class="pm-tag pm-ghost">Not in active comms</span><a href="https://www.linkedin.com/in/glazer/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Matt Wool</div>
+            <div class="pcard-title">CEO</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: May 19 '26</span><a href="https://www.linkedin.com/in/matthew-wool-67a3aa5/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Sarah Johnson Dayes</div>
+            <div class="pcard-title">COO & Chief Client Officer</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-lapsed">Last: Apr 9 '26</span><a href="https://www.linkedin.com/in/sarahjohnsondayes/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-ghost">
+            <div class="pcard-name">Helen Southgate</div>
+            <div class="pcard-title">CSO — EMEA/APAC Strategy</div>
+            <div class="pcard-meta"><span class="src src-ext">EXT</span><span class="pm-tag pm-ghost">Not in HubSpot</span><a href="https://www.linkedin.com/in/helensouthgate/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-ghost">
+            <div class="pcard-name">Kevin White</div>
+            <div class="pcard-title">CFO</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Jan 6 '25</span><a href="https://www.linkedin.com/in/kevin-white-a1152248/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-ghost">
+            <div class="pcard-name">Cyrus Clemensen</div>
+            <div class="pcard-title">CTO</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Jun 4 '25</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-ghost">
+            <div class="pcard-name">Jon Claydon</div>
+            <div class="pcard-title">Chief Development Officer (M&A)</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Apr '23</span><a href="https://www.linkedin.com/in/jonclaydon/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Talent & HR -->
+      <div class="org-tier">
+        <div class="tier-lbl">Talent & HR — Untapped · Expansion Target</div>
+        <div class="org-row">
+          <div class="pcard s-target">
+            <div class="pcard-name">Emily Tetto</div>
+            <div class="pcard-title">VP, Talent & Culture</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-target">Last: Oct '24 · Re-engage</span><a href="https://www.linkedin.com/in/emily-tetto-3039028/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Stefani Baranowski</div>
+            <div class="pcard-title">Director, Talent Acquisition & HR</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Jun '25</span><a href="https://www.linkedin.com/in/stefani-baranowski-b25265a/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Mick Sloan</div>
+            <div class="pcard-title">Director, Talent Operations</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Jul '25</span><a href="https://www.linkedin.com/in/mick-sloan-b03117b4/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client Services / Affiliate -->
+      <div class="org-tier">
+        <div class="tier-lbl">Client Services — Affiliate (Primary GA Buyer Pool · Contracting)</div>
+        <div class="org-row">
+          <div class="pcard s-active">
+            <div class="pcard-name">Tyla Nelson</div>
+            <div class="pcard-title">Group VP, Client Services</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 9 '26 · Primary</span><a href="https://www.linkedin.com/in/tyla-nelson-6b521821/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Chelsey Holt</div>
+            <div class="pcard-title">Senior Director, Client Services</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Nov '25 · May be departing</span><a href="https://www.linkedin.com/in/chelseyholt/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-risk">
+            <div class="pcard-name">Stephanie Swan</div>
+            <div class="pcard-title">Director, Client Services</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-risk">⚠️ May have left AP</span><a href="https://uk.linkedin.com/in/stephanie-swan-35b4b96" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Heather Creamer</div>
+            <div class="pcard-title">Director, Client Services (Advantage/Mid-Market)</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-active">Fireflies confirmed</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Jessica Davis</div>
+            <div class="pcard-title">Associate Director, Client Services</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 9 '26</span><a href="https://www.linkedin.com/in/jessica-davis-5b593b47/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Jillian Menkes</div>
+            <div class="pcard-title">Account Director, Affiliate</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 16 '26 · Bi-weekly</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Alexis Constantine</div>
+            <div class="pcard-title">Account Director, Affiliate (Advantage — 30+ brands)</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-active">Fireflies confirmed</span><a href="https://www.linkedin.com/in/alexis-constantine-arc/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Jacqui Taylor</div>
+            <div class="pcard-title">Resource & Staffing Solutions Lead</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-active">Last: Apr 28 '26 · Referral opp</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Influencer -->
+      <div class="org-tier">
+        <div class="tier-lbl">Client Services — Influencer (Underpenetrated · Best Expansion Zone)</div>
+        <div class="org-row">
+          <div class="pcard s-target">
+            <div class="pcard-name">[Incoming Influencer VP]</div>
+            <div class="pcard-title">VP, Influencer — onboarding imminently</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-target">Not in HubSpot · 🎯 Priority intro</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Amelia Glynn</div>
+            <div class="pcard-title">VP, Influencer Client Services</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-lapsed">Last: Aug '25</span><a href="https://www.linkedin.com/in/amelia-glynn-82690410/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Courtney Rieker</div>
+            <div class="pcard-title">Director, Influencer Brand Management</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 16 '26</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Shannon Noori</div>
+            <div class="pcard-title">Senior Account Manager, Influencer (Lowe's)</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-active">GA rated 9/10 (Mar)</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Madi Kolodgie</div>
+            <div class="pcard-title">Account Manager, Influencer</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-active">90-day positive · AI pilot</span><a href="https://www.linkedin.com/in/madi-kolodgie/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations -->
+      <div class="org-tier">
+        <div class="tier-lbl">Operations</div>
+        <div class="org-row">
+          <div class="pcard s-lapsed">
+            <div class="pcard-name">Devon Wright</div>
+            <div class="pcard-title">Global Lead, Operations</div>
+            <div class="pcard-meta"><span class="src src-ff">FF</span><span class="pm-tag pm-lapsed">Last: Mar '26 · Kyle's manager</span><a href="https://www.linkedin.com/in/devon-wright-93229162" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Nicole Ekblad</div>
+            <div class="pcard-title">Senior Operations Manager</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 10 '26</span><a href="https://www.linkedin.com/in/nicole-ekblad/" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+          <div class="pcard s-active">
+            <div class="pcard-name">Madisun Miska</div>
+            <div class="pcard-title">Operations Manager</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="src src-ff">FF</span><span class="pm-tag pm-active">Last: Jun 9 '26</span><a href="https://www.linkedin.com/in/madisun-miska-548081145" target="_blank" class="li-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</a></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics -->
+      <div class="org-tier">
+        <div class="tier-lbl">Analytics & Reporting — Untapped · Expansion Target</div>
+        <div class="org-row">
+          <div class="pcard s-target">
+            <div class="pcard-name">Ben Heller</div>
+            <div class="pcard-title">Associate Director, Client Analytics</div>
+            <div class="pcard-meta"><span class="src src-hs">HS</span><span class="pm-tag pm-target">Analytics GA pitch · No recent comms</span><span class="li-none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.4"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>No link</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- GA DISTRIBUTION BY AP DEPARTMENT -->
+  <div class="section">
+    <h2>GA Distribution — Where Our 39 GAs Sit vs. Where the Opportunity Is</h2>
+    <div class="ga-dist-box">
+      <div class="ga-dist-note">
+        The 39 active GAs are deployed across AP's departments. The bars below show estimated GA count per department based on deal names and Fireflies meeting data — this is not a precise breakdown, but directionally accurate. The point: we're heavily concentrated in Affiliate (the contracting segment) and very light in Influencer (the growth segment).
+      </div>
+      <!--
+        Affiliate: ~28 of 39 (the bulk of coordinator/assistant/lead roles)
+        Influencer: ~6 (associate, assistant, influencer roles)
+        Ops / Monday.com: ~3
+        Other / unattributed: ~2
+        Max bar = 28, chart width = 100%
+      -->
+      <div class="ga-dept-row">
+        <div class="ga-dept-name">Affiliate / Client Services</div>
+        <div class="ga-bar-bg"><div class="ga-bar-fill" style="width:72%; background:#e74c3c;"><span class="ga-bar-text">~28 GAs · Contracting</span></div></div>
+        <div class="ga-count" style="color:var(--red);">~28</div>
+      </div>
+      <div class="ga-insight" style="color:#e74c3c; margin-bottom:6px;">⚠️ This is the segment being automated away. High concentration = high churn risk.</div>
+
+      <div class="ga-dept-row">
+        <div class="ga-dept-name">Influencer</div>
+        <div class="ga-bar-bg"><div class="ga-bar-fill" style="width:15%; background:#4f6ef7;"><span class="ga-bar-text">~6</span></div></div>
+        <div class="ga-count" style="color:var(--accent);">~6</div>
+      </div>
+      <div class="ga-insight" style="color:#4f6ef7; margin-bottom:6px;">📈 Growing division, underpenetrated — biggest expansion opportunity. New VP onboarding.</div>
+
+      <div class="ga-dept-row">
+        <div class="ga-dept-name">Operations / Monday.com</div>
+        <div class="ga-bar-bg"><div class="ga-bar-fill" style="width:8%; background:#2ecc71;"><span class="ga-bar-text">~3</span></div></div>
+        <div class="ga-count" style="color:var(--green);">~3</div>
+      </div>
+      <div class="ga-insight" style="color:var(--green); margin-bottom:6px;">✅ Most stable placement type — structured, self-directing, low churn risk. Could have more of these.</div>
+
+      <div class="ga-dept-row">
+        <div class="ga-dept-name">Other / Unattributed</div>
+        <div class="ga-bar-bg"><div class="ga-bar-fill" style="width:5%; background:var(--gray);"><span class="ga-bar-text">~2</span></div></div>
+        <div class="ga-count" style="color:var(--muted);">~2</div>
+      </div>
+
+      <div class="ga-summary">
+        <strong style="color:var(--text);">The rebalancing thesis:</strong> Affiliate coordinator roles are being automated away by AP's own AI adoption (AI-native by 2027). We need to replace them with roles that survive automation — influencer ops, Monday.com/ops admin, analytics, AI QA — before headcount drops further. The good news: AP has active teams in all of these areas, and our existing contacts in Influencer, Ops, and Analytics are warm enough to have that conversation.
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPANSION OPPORTUNITIES -->
+  <div class="section">
+    <h2>Expansion Opportunities</h2>
+    <div class="exp-grid">
+      <div class="exp-card" style="border-color:rgba(231,76,60,0.4);">
+        <div class="exp-head"><h3>AI Ops / Automation QA GAs</h3><span class="pri pri-urgent">Urgent</span></div>
+        <div class="exp-desc">AP is going AI-native by 2027. Affiliate coordinator work is being automated. Stephen already pitched AI annotation QA and ops/automation roles to Tyla in April — she asked to review. This is the natural replacement for churning coordinator roles. PE investors see AI as a value-creation lever.</div>
+        <div class="exp-who"><strong>Owner:</strong> Stephen → Tyla Nelson &nbsp;·&nbsp; <strong>Status:</strong> Thread open 7 weeks, no follow-up</div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(231,76,60,0.4);">
+        <div class="exp-head"><h3>Influencer Ops GAs (via Incoming VP)</h3><span class="pri pri-urgent">Urgent</span></div>
+        <div class="exp-desc">A new VP is onboarding imminently with a fresh budget and mandate — no pre-existing GA fatigue. Influencer division is post-Volt/Influencer Response acquisition, likely still integrating. Entry point: ask Sarah for a warm intro. Roles: influencer coordinator, campaign ops, creator outreach.</div>
+        <div class="exp-who"><strong>Entry:</strong> Ask Sarah Dayes for intro at next touch</div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(243,156,18,0.4);">
+        <div class="exp-head"><h3>Senior GA / Oversight Roles</h3><span class="pri pri-high">High</span></div>
+        <div class="exp-desc">Stephen introduced a "senior growth assistant" oversight role across 60 clients in Mar 2026 — Sarah responded very positively. Higher-value, self-directing, not dependent on AP managers delegating tasks. $5–6K/month. Exactly what AP needs as junior roles automate away.</div>
+        <div class="exp-who"><strong>Contact:</strong> Sarah Johnson Dayes, Tyla Nelson &nbsp;·&nbsp; Needs exec sign-off on price</div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(243,156,18,0.4);">
+        <div class="exp-head"><h3>Monday.com / Ops Admin GAs</h3><span class="pri pri-high">High</span></div>
+        <div class="exp-desc">Most stable placement type in AP's portfolio. AP uses Monday.com extensively across ops and client teams. Structured, self-directing, automation-resistant — Crystal Coran was a strong fit before budget cuts. Low churn risk by role design.</div>
+        <div class="exp-who"><strong>Contact:</strong> Nicole Ekblad, Madisun Miska, Devon Wright</div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(243,156,18,0.4);">
+        <div class="exp-head"><h3>EMEA/APAC Expansion Support</h3><span class="pri pri-high">High</span></div>
+        <div class="exp-desc">Helen Southgate (CSO) is driving AP's geographic expansion. AP had EMEA and APAC Affiliate Assistants — both churned. Re-pitch as regional ops support tied to their 2027 expansion narrative. Helen is NOT in HubSpot yet.</div>
+        <div class="exp-who"><strong>Action:</strong> Add Helen to HubSpot · <a href="https://www.linkedin.com/in/helensouthgate/" target="_blank">LinkedIn ↗</a></div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(79,110,247,0.4);">
+        <div class="exp-head"><h3>Analytics & Reporting GAs</h3><span class="pri pri-med">Medium</span></div>
+        <div class="exp-desc">Ben Heller runs AP Vision (proprietary reporting platform). High-value, self-directed, automation-resistant. AP's analytics team is a natural fit for a data-savvy GA who owns reporting production and dashboarding.</div>
+        <div class="exp-who"><strong>Contact:</strong> Ben Heller (Assoc. Director, Client Analytics)</div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(79,110,247,0.4);">
+        <div class="exp-head"><h3>Talent / HR Support GAs</h3><span class="pri pri-med">Medium</span></div>
+        <div class="exp-desc">Emily Tetto (VP, Talent & Culture) and Stefani Baranowski are deeply under-engaged. With Mick Sloan in Talent Ops, this is a three-person team likely needing recruiting ops, HRIS management, and HR coordination support — all structured, delegatable work.</div>
+        <div class="exp-who"><strong>Contact:</strong> Emily Tetto · <a href="https://www.linkedin.com/in/emily-tetto-3039028/" target="_blank">LinkedIn ↗</a></div>
+      </div>
+      <div class="exp-card" style="border-color:rgba(79,110,247,0.4);">
+        <div class="exp-head"><h3>Referral Play via Jacqui Taylor</h3><span class="pri pri-med">Medium</span></div>
+        <div class="exp-desc">Jacqui Taylor is AP's Resource & Staffing Solutions Lead. AP manages 200+ brand clients (Target, adidas, TikTok, Instacart). Ask her if any brand clients ask about virtual assistant / fractional ops support — one conversation could unlock multiple new GA clients.</div>
+        <div class="exp-who"><strong>Contact:</strong> Jacqui Taylor · Last: Apr 28 '26</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT ACTIONS -->
+  <div class="section">
+    <h2>Prioritized Next Actions</h2>
+    <div class="act-list">
+      <div class="act-item">
+        <div class="act-num n-urgent">1</div>
+        <div><div class="act-title">Send the billing amendment to Tyla Nelson — today</div><div class="act-detail">Stephen committed on Jun 9. 10 days overdue. Formalizes $107K/month fixed billing with 12.5% volume discount for 40 GAs. Delays signal follow-through issues. Owner: Stephen.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-urgent">2</div>
+        <div><div class="act-title">Follow up with Tyla on AI Ops / Automation GA roles (pitched Apr 28)</div><div class="act-detail">Thread open 7 weeks. Re-frame as: "given automation is reducing affiliate coordinator work, here's the role type that fits where AP is heading." Tyla's own words on May 26 make the case for you.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-urgent">3</div>
+        <div><div class="act-title">Ask Sarah for a warm intro to the incoming Influencer VP</div><div class="act-detail">Sarah disclosed the new VP at the Mar 25 meeting. Fresh buyer, fresh mandate, no GA relationship history. Best near-term expansion entry point. Ask: "We'd love to meet the new VP to introduce ourselves and see how we can support the influencer team."</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-high">4</div>
+        <div><div class="act-title">Verify Stephanie Swan's employment status at AP</div><div class="act-detail">LinkedIn suggests she may have moved to DisteCable S.L. Last logged contact Jun 9. If she's left, Tyla is now sole primary contact — update HubSpot accordingly to avoid communication gaps.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-high">5</div>
+        <div><div class="act-title">Manage Therese Libo transition before Jun 30</div><div class="act-detail">Last day Jun 30. Jul 1–3 is a wellness break. Confirm GA coverage is in place. Check with Jillian Menkes whether her team has additional budget pressure coming in July that could trigger more reductions.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-high">6</div>
+        <div><div class="act-title">Add Helen Southgate (CSO, EMEA/APAC) to HubSpot</div><div class="act-detail">C-level contact driving AP's geographic expansion — not in HubSpot. EMEA and APAC Affiliate Assistants both churned. Pitch: re-engage on regional ops support tied to their 2027 roadmap. <a href="https://www.linkedin.com/in/helensouthgate/" target="_blank">LinkedIn ↗</a></div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-high">7</div>
+        <div><div class="act-title">Probe Tyla explicitly about other departments — not just client services</div><div class="act-detail">Tyla said "no current growth opportunities" on May 26 — from a contracting client services lens. The AI Ops follow-up (Action #2) re-opens the door. Specifically ask about: analytics (Ben Heller), talent/HR (Emily Tetto), and the incoming influencer VP.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num n-high">8</div>
+        <div><div class="act-title">Ask Jacqui Taylor about referrals to AP brand clients</div><div class="act-detail">AP manages 200+ brand clients. Jacqui's title is literally Resource & Staffing Solutions Lead — she is exactly the right person to ask whether AP brand clients have asked about fractional/virtual ops support.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num">9</div>
+        <div><div class="act-title">Re-engage Emily Tetto (VP, Talent & Culture)</div><div class="act-detail">No contact since Oct 2024. AP's full talent team (Emily, Stefani, Mick) is an entirely untapped GA buyer pool with structured, delegatable work. Light outreach from Stephen or Ash.</div></div>
+      </div>
+      <div class="act-item">
+        <div class="act-num">10</div>
+        <div><div class="act-title">Audit all 39 active GAs for delegation risk</div><div class="act-detail">Review each placement: Is the AP manager still at AP? Does the GA have a defined weekly task framework? When was the last QCI? Any GA with unclear task ownership is a near-term churn risk.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Acceleration Partners · Account Health Deep Dive · Jun 19, 2026 · Ash Garber / Growth Assistant · Sources: HubSpot CRM + Fireflies AI + LinkedIn
+  </div>
+
+</div>
+</body>
+</html>
