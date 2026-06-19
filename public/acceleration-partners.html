@@ -32,9 +32,17 @@
   a:hover { text-decoration: underline; }
 
   .page { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
-  .header { margin-bottom: 28px; }
-  .header h1 { font-size: 26px; font-weight: 700; color: #fff; }
-  .header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  /* Standard header */
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .header-left h1 { font-size: 26px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+  .header-meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .header-links { display: flex; gap: 12px; flex-wrap: wrap; }
+  .header-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--accent); background: rgba(79,110,247,0.08); border: 1px solid rgba(79,110,247,0.2); border-radius: 5px; padding: 4px 10px; text-decoration: none; }
+  .header-link:hover { background: rgba(79,110,247,0.15); text-decoration: none; }
+  .header-right { text-align: right; flex-shrink: 0; }
+  .internal-tag { display: inline-block; background: rgba(231,76,60,.1); color: var(--red); border: 1px solid rgba(231,76,60,.2); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  .header-right-meta { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.7; }
 
   /* Alerts */
   .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
@@ -220,8 +228,29 @@
 
   <!-- HEADER -->
   <div class="header">
-    <h1>Acceleration Partners — Account Health Deep Dive</h1>
-    <div class="sub">Jun 19, 2026 &nbsp;·&nbsp; Sources: HubSpot CRM, Fireflies AI, LinkedIn/External Research &nbsp;·&nbsp; Internal — Ash Garber</div>
+    <div class="header-top">
+      <div class="header-left">
+        <h1>Acceleration Partners</h1>
+        <div class="header-meta">PE-backed global affiliate &amp; influencer marketing agency &nbsp;·&nbsp; ~300 employees &nbsp;·&nbsp; $44.75M ARR &nbsp;·&nbsp; Owner: Stephen Westman</div>
+        <div class="header-links">
+          <a href="https://www.accelerationpartners.com" target="_blank" class="header-link">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            accelerationpartners.com
+          </a>
+          <a href="https://www.linkedin.com/company/acceleration-partners" target="_blank" class="header-link">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            LinkedIn
+          </a>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="internal-tag">Internal Use Only</span>
+        <div class="header-right-meta">
+          Report Date: June 19, 2026<br>
+          Sources: HubSpot · Fireflies · LinkedIn
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ALERTS -->
